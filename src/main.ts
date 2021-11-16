@@ -1,9 +1,12 @@
 import { Card, GameState, indexToCoord, initGame, next } from './game';
-import { clamp } from 'lodash';
+import { clamp, cloneDeep, last } from 'lodash';
 import { addVec, scaleVec, v2, Vector2 } from './util';
 
 interface Scene {
     cards: UICard[];
+    // TODO: For simplicity, just copy the entire game state?
+    energy: number;
+    path: number[];
 }
 interface UICard {
     card: Card;
@@ -30,14 +33,30 @@ function initView(gameState: GameState): Scene {
             isHighlighted: false,
         };
     });
-    return { cards };
+    return {
+        cards,
+        energy: gameState.energy,
+        path: cloneDeep(gameState.path),
+    };
 }
 
-let currentGameState: GameState;
+let committedState: GameState;
+const previewStack: GameState[] = [];
 let scene: Scene;
+
+function updateScene(nextStep: GameState) {
+    nextStep.board.forEach((card, index) => {
+        // Highlight cards on the path
+        scene.cards[index].isHighlighted = nextStep.path.includes(index);
+    });
+    scene.energy = nextStep.energy;
+    scene.path = cloneDeep(nextStep.path);
+}
 
 function init() {
     canvas = $<HTMLCanvasElement>('#screen')!;
+    const commit = $<HTMLButtonElement>('#commit')!;
+    const undo = $<HTMLButtonElement>('#undo')!;
     const ctx = canvas.getContext('2d')!;
 
     canvas.addEventListener('click', e => {
@@ -55,25 +74,36 @@ function init() {
         const yIndex = clamp(Math.floor(relative.y / CELL_SIZE), 0, 2);
         const cellIndex = yIndex * 3 + xIndex;
 
-        const nextStep = next(currentGameState, cellIndex);
+        const latestState = previewStack.length ? last(previewStack)! : committedState;
+        const nextStep = next(latestState, cellIndex);
         if (nextStep instanceof Error) {
             console.log(nextStep.message);
             return;
         }
 
-        currentGameState = nextStep;
-        currentGameState.board.forEach((card, index) => {
-            // Highlight cards on the path
-            scene.cards[index].isHighlighted = currentGameState.path.includes(index);
-        });
+        previewStack.push(nextStep);
+        updateScene(nextStep);
 
         render(ctx);
 
     });
+    commit.addEventListener('click', () => {
+        if (!previewStack.length) {
+            return;
+        }
+        committedState = last(previewStack)!;
+        previewStack.length = 0;
+    });
+    undo.addEventListener('click', () => {
+        previewStack.pop();
+        const latestState = previewStack.length ? last(previewStack)! : committedState;
+        updateScene(latestState);
+        render(ctx);
+    });
 
     const gameState = initGame();
     scene = initView(gameState);
-    currentGameState = gameState;
+    committedState = gameState;
 
     render(ctx);
 }
@@ -98,13 +128,13 @@ function render(ctx: CanvasRenderingContext2D) {
     ctx.stroke();
 
     drawStats(ctx, [
-        "Energy: " + currentGameState.energy,
+        "Energy: " + scene.energy,
     ]);
 
     for (const card of scene.cards) {
         drawCard(ctx, card);
     }
-    drawPath(ctx, currentGameState.path);
+    drawPath(ctx, scene.path);
 
     ctx.restore();
 }
