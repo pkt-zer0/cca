@@ -11,15 +11,77 @@ interface Scene {
 interface UICard {
     card: Card;
     position: Vector2;
-    isHighlighted: boolean;
+    /** Can be animated between 0 and 1 */
+    highlight: number;
 }
 
 const CANVAS_SIZE = v2(300, 400);
 const CELL_SIZE = 100;
 
 const $ = document.querySelector.bind(document);
-const $$ = document.querySelectorAll.bind(document);
+
 let canvas: HTMLCanvasElement;
+let ctx: CanvasRenderingContext2D;
+
+const animations: any[] = [];
+let currentAnimation: any;
+
+/** Runs on each frame, updates animations if needed. */
+function runAnimations(timestamp: DOMHighResTimeStamp) {
+    // TODO: Don't run RAF callback if we have no active/pending animations
+    if (!currentAnimation && !animations.length) {
+        // No pending/running animations, we're done
+    }
+
+    if (currentAnimation) {
+        // Process current anim
+        const done = currentAnimation(timestamp);
+        if (done) {
+            currentAnimation = undefined;
+        }
+    } else if (animations.length) {
+        // TODO: We should start this already on the current frame, not just the next
+        currentAnimation = animations.shift();
+    }
+}
+
+/** Wrapper for animation handling logic so the inner function can early-exit */
+function rafCallback(timestamp: DOMHighResTimeStamp) {
+    runAnimations(timestamp);
+    render();
+    requestAnimationFrame(rafCallback);
+}
+requestAnimationFrame(rafCallback);
+
+/** Produces an animation callback from an updater function that works with elapsed time.
+ *
+ * The returned animation starts running when first invoked, and tracks elapsed time since then.
+ */
+function animationUpdater(updater: any) {
+    let start: number | undefined = undefined;
+    function update(timestamp: DOMHighResTimeStamp) {
+        if (!start) { start = timestamp; }
+        const elapsed = timestamp - start;
+        return updater(elapsed);
+    }
+    return update;
+}
+
+/** Tweens a card's highlight value from 0 to 1 over 500ms. */
+function animateHighlight(card: UICard, reverse: boolean) {
+    const duration = 500;
+    // TODO: Use an explicit object instead of a func + closure
+    return animationUpdater((elapsed: DOMHighResTimeStamp) => {
+        // Animation over
+        if (elapsed >= duration) { return true; }
+
+        card.highlight = !reverse ?
+            clamp(elapsed / duration, 0, 1) :
+            clamp(1 - (elapsed / duration), 0, 1);
+
+        return false;
+    });
+}
 
 function initView(gameState: GameState): Scene {
     let cards = gameState.board.map((c, index) => {
@@ -30,7 +92,7 @@ function initView(gameState: GameState): Scene {
         return {
             card: c,
             position,
-            isHighlighted: false,
+            highlight: 0,
         };
     });
     return {
@@ -44,10 +106,20 @@ let committedState: GameState;
 const previewStack: GameState[] = [];
 let scene: Scene;
 
-function updateScene(nextStep: GameState) {
+function updateScene(nextStep: GameState, prevStep: GameState) {
     nextStep.board.forEach((card, index) => {
         // Highlight cards on the path
-        scene.cards[index].isHighlighted = nextStep.path.includes(index);
+        const inPath = nextStep.path.includes(index);
+        const wasInPath = prevStep.path.includes(index);
+        // TODO Add event output to gameloop so we don't need to do a state diff for this
+        // Trigger an animation for cards newly added to the path
+        if (inPath && !wasInPath) {
+            // Added to path
+            animations.push(animateHighlight(scene.cards[index], false));
+        } else if (!inPath && wasInPath) {
+            // Removed from path
+            animations.push(animateHighlight(scene.cards[index], true));
+        }
     });
     scene.energy = nextStep.energy;
     scene.path = cloneDeep(nextStep.path);
@@ -57,7 +129,7 @@ function init() {
     canvas = $<HTMLCanvasElement>('#screen')!;
     const commit = $<HTMLButtonElement>('#commit')!;
     const undo = $<HTMLButtonElement>('#undo')!;
-    const ctx = canvas.getContext('2d')!;
+    ctx = canvas.getContext('2d')!;
 
     canvas.addEventListener('click', e => {
         // TODO: Cache this, recalc on change only
@@ -82,9 +154,8 @@ function init() {
         }
 
         previewStack.push(nextStep);
-        updateScene(nextStep);
-
-        render(ctx);
+        updateScene(nextStep, latestState);
+        render();
 
     });
     commit.addEventListener('click', () => {
@@ -95,20 +166,20 @@ function init() {
         previewStack.length = 0;
     });
     undo.addEventListener('click', () => {
-        previewStack.pop();
+        const prevState = previewStack.pop()!;
         const latestState = previewStack.length ? last(previewStack)! : committedState;
-        updateScene(latestState);
-        render(ctx);
+        updateScene(latestState, prevState);
+        render();
     });
 
     const gameState = initGame();
     scene = initView(gameState);
     committedState = gameState;
 
-    render(ctx);
+    render();
 }
 
-function render(ctx: CanvasRenderingContext2D) {
+function render() {
     ctx.save();
 
     ctx.clearRect(0,0, CANVAS_SIZE.x, CANVAS_SIZE.y);
@@ -179,10 +250,11 @@ function drawCard(ctx: CanvasRenderingContext2D, el: UICard) {
 
     const origin = el.position;
     ctx.fillStyle = '#333';
-    ctx.strokeStyle = '#999';
     ctx.lineWidth = 1;
     ctx.fillRect(origin.x, origin.y, 80, 80);
-    if (el.isHighlighted) {
+    if (el.highlight) {
+        const rgb = `150, 150, 150`;
+        ctx.strokeStyle = `rgba(${rgb}, ${el.highlight})`;
         ctx.strokeRect(origin.x, origin.y, 80, 80);
     }
     ctx.fillStyle = '#fff';
