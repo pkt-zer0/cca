@@ -132,11 +132,14 @@ function updateScene(nextStep: GameState, prevStep: GameState, events: GameEvent
     scene.path = cloneDeep(nextStep.path);
 }
 
+function undo() {
+    const prevState = previewStack.pop()!;
+    const latestState = previewStack.length ? last(previewStack)! : committedState;
+    updateScene(latestState, prevState, []);
+}
+
 function init() {
     canvas = $<HTMLCanvasElement>('#screen')!;
-    const commit = $<HTMLButtonElement>('#commit')!;
-    const undo = $<HTMLButtonElement>('#undo')!;
-    const turbo = $<HTMLInputElement>('#turbo')!;
     ctx = canvas.getContext('2d')!;
 
     canvas.addEventListener('click', e => {
@@ -155,31 +158,42 @@ function init() {
         const cellIndex = yIndex * 3 + xIndex;
 
         const latestState = previewStack.length ? last(previewStack)! : committedState;
-        const nextStep = next(latestState, cellIndex);
-        if (nextStep instanceof Error) {
-            console.log(nextStep.message);
-            return;
+
+        const currentPath = latestState.path;
+        const indexInPath = currentPath.indexOf(cellIndex);
+        if (indexInPath === -1) {
+            // Selected card not in path, try moving forward with it
+            const nextStep = next(latestState, cellIndex);
+            if (nextStep instanceof Error) {
+                console.log(nextStep.message);
+                return;
+            }
+
+            previewStack.push(nextStep.state);
+            updateScene(nextStep.state, latestState, nextStep.events);
+            render();
+        } else {
+            // Clicked already selected card, roll back to the step before it
+            const undoCount = currentPath.length - indexInPath;
+            for (let i = 0; i < undoCount; i++) {
+                undo();
+            }
+            render();
         }
 
-        previewStack.push(nextStep.state);
-        updateScene(nextStep.state, latestState, nextStep.events);
-        render();
-
     });
-    commit.addEventListener('click', () => {
+    $<HTMLButtonElement>('#commit')!.addEventListener('click', () => {
         if (!previewStack.length) {
             return;
         }
         committedState = last(previewStack)!;
         previewStack.length = 0;
     });
-    undo.addEventListener('click', () => {
-        const prevState = previewStack.pop()!;
-        const latestState = previewStack.length ? last(previewStack)! : committedState;
-        updateScene(latestState, prevState, []);
+    $<HTMLButtonElement>('#undo')!.addEventListener('click', () => {
+        undo();
         render();
     });
-    turbo.addEventListener('change', () => {
+    $<HTMLInputElement>('#turbo')!.addEventListener('change', () => {
         turboMode = !turboMode;
         animationSpeed = turboMode ? 4 : 1;
     });
