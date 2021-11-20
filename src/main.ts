@@ -25,6 +25,9 @@ let ctx: CanvasRenderingContext2D;
 
 const animations: any[] = [];
 let currentAnimation: any;
+/** Global multiplier on animation speed. */
+let animationSpeed = 1;
+let turboMode = false;
 
 /** Runs on each frame, updates animations if needed. */
 function runAnimations(timestamp: DOMHighResTimeStamp) {
@@ -62,7 +65,8 @@ function animationUpdater(updater: any) {
     function update(timestamp: DOMHighResTimeStamp) {
         if (!start) { start = timestamp; }
         const elapsed = timestamp - start;
-        return updater(elapsed);
+        // TODO This won't work correctly when changing speed mid-animation
+        return updater(elapsed * animationSpeed);
     }
     return update;
 }
@@ -132,6 +136,7 @@ function init() {
     canvas = $<HTMLCanvasElement>('#screen')!;
     const commit = $<HTMLButtonElement>('#commit')!;
     const undo = $<HTMLButtonElement>('#undo')!;
+    const turbo = $<HTMLInputElement>('#turbo')!;
     ctx = canvas.getContext('2d')!;
 
     canvas.addEventListener('click', e => {
@@ -173,6 +178,10 @@ function init() {
         const latestState = previewStack.length ? last(previewStack)! : committedState;
         updateScene(latestState, prevState, []);
         render();
+    });
+    turbo.addEventListener('change', () => {
+        turboMode = !turboMode;
+        animationSpeed = turboMode ? 4 : 1;
     });
 
     const gameState = initGame();
