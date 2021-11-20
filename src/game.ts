@@ -17,6 +17,28 @@ export interface GameState {
     gold: number;
 }
 
+export enum EventType {
+    Unknown,
+    EnergyLoss,
+    PathSelection
+}
+
+export interface EnergyLoss {
+    type: EventType.EnergyLoss;
+    amount: number;
+}
+export interface PathSelection {
+    type: EventType.PathSelection;
+    selectedIndex: number;
+}
+export type GameEvent = EnergyLoss | PathSelection;
+
+export interface StepResult {
+    state: GameState;
+    /** Indicates the events leading to the end state. */
+    events: GameEvent[];
+}
+
 export function initGame(): GameState {
     const startingDeck: Card[] = times(15, i => {
         return {
@@ -52,9 +74,10 @@ function isAdjacent(startIndex: number, endIndex: number) {
 }
 
 /** Returns the new game state given the previous one and the current input. */
-export function next(prev: GameState, input: number): GameState | Error {
+export function next(prev: GameState, input: number): StepResult | Error {
     // Copy original state so we can mutate it and remain a pure function
     const state = cloneDeep(prev);
+    const events: GameEvent[] = [];
     const selectedIndex = input;
 
     //-- Game logic
@@ -71,12 +94,18 @@ export function next(prev: GameState, input: number): GameState | Error {
         }
     }
 
+    // Add selected card to path
     state.path.push(selectedIndex);
+    events.push({ type: EventType.PathSelection, selectedIndex });
     const selectedCard = state.board[selectedIndex];
+
     // Handle effects of selected card
     state.energy -= selectedCard.cost;
+    if (selectedCard.cost) {
+        events.push({ type: EventType.EnergyLoss, amount: selectedCard.cost });
+    }
 
-    return state;
+    return { state, events };
 }
 
 export function indexToCoord(index: number): Vector2 {

@@ -1,4 +1,4 @@
-import { Card, GameState, indexToCoord, initGame, next } from './game';
+import { Card, EventType, GameEvent, GameState, indexToCoord, initGame, next } from './game';
 import { clamp, cloneDeep, last } from 'lodash';
 import { addVec, scaleVec, v2, Vector2 } from './util';
 
@@ -106,17 +106,20 @@ let committedState: GameState;
 const previewStack: GameState[] = [];
 let scene: Scene;
 
-function updateScene(nextStep: GameState, prevStep: GameState) {
+function updateScene(nextStep: GameState, prevStep: GameState, events: GameEvent[]) {
+    // Trigger an animation for cards newly added to the path
+    for (let event of events) {
+        if (event.type === EventType.PathSelection) {
+            animations.push(animateHighlight(scene.cards[event.selectedIndex], false));
+        }
+    }
+
     nextStep.board.forEach((card, index) => {
         // Highlight cards on the path
         const inPath = nextStep.path.includes(index);
         const wasInPath = prevStep.path.includes(index);
-        // TODO Add event output to gameloop so we don't need to do a state diff for this
-        // Trigger an animation for cards newly added to the path
-        if (inPath && !wasInPath) {
-            // Added to path
-            animations.push(animateHighlight(scene.cards[index], false));
-        } else if (!inPath && wasInPath) {
+        // TODO This is an animation being reverted, needs a distinct solution
+        if (!inPath && wasInPath) {
             // Removed from path
             animations.push(animateHighlight(scene.cards[index], true));
         }
@@ -153,8 +156,8 @@ function init() {
             return;
         }
 
-        previewStack.push(nextStep);
-        updateScene(nextStep, latestState);
+        previewStack.push(nextStep.state);
+        updateScene(nextStep.state, latestState, nextStep.events);
         render();
 
     });
@@ -168,7 +171,7 @@ function init() {
     undo.addEventListener('click', () => {
         const prevState = previewStack.pop()!;
         const latestState = previewStack.length ? last(previewStack)! : committedState;
-        updateScene(latestState, prevState);
+        updateScene(latestState, prevState, []);
         render();
     });
 
