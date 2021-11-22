@@ -32,6 +32,7 @@ export function render() {
     drawStats(ctx, [
         'Energy: ' + scene.energy,
     ]);
+    drawEnergyChange(ctx);
 
     for (const card of scene.cards) {
         drawCard(ctx, card);
@@ -72,6 +73,18 @@ function drawStats(ctx: CanvasRenderingContext2D, stats: string[]) {
         ctx.fillText(line, 0, y);
         y += 16;
     }
+
+    ctx.restore();
+}
+
+function drawEnergyChange(ctx: CanvasRenderingContext2D) {
+    ctx.save();
+
+    ctx.fillStyle = `rgba(255, 255, 255, ${scene.energyChangeOpacity})`;
+    ctx.font = '32px sans-serif';
+    ctx.textBaseline = 'top';
+    const text = `${scene.energyChange.toFixed(0)} E`;
+    ctx.fillText(text, 100, 300);
 
     ctx.restore();
 }

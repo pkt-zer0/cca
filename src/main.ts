@@ -1,12 +1,14 @@
 import { Card, EventType, GameEvent, GameState, initGame, next } from './game';
 import { clamp, cloneDeep, last } from 'lodash';
 import { addVec, scaleVec, v2, Vector2 } from './util';
-import { render, init as initRenderer, CELL_SIZE } from './render';
+import { CELL_SIZE, init as initRenderer, render } from './render';
 
 export interface Scene {
     cards: UICard[];
     // TODO: For simplicity, just copy the entire game state?
     energy: number;
+    energyChange: number;
+    energyChangeOpacity: number;
     path: number[];
 }
 export interface UICard {
@@ -84,6 +86,40 @@ function animateHighlight(card: UICard, reverse: boolean) {
     });
 }
 
+function animateEnergyChange(amount: number) {
+    const rampUp = 200;
+    const stable = 800;
+    const duration = 1600;
+    const fadeout = duration - stable;
+
+    return animationUpdater((elapsed: DOMHighResTimeStamp) => {
+        // Skipped in turbo mode
+        if (turboMode) {
+            scene.energyChangeOpacity = 0;
+            return true;
+        }
+
+        scene.energyChange = amount; // TODO: Only set this once
+        // Animation over
+        if (elapsed >= duration) {
+            scene.energyChangeOpacity = 0;
+            return true;
+        }
+
+        // Three phases for the animation: fade in, stay, fade out
+        if (elapsed < rampUp) {
+            scene.energyChangeOpacity = clamp(elapsed / rampUp, 0, 1);
+        } else if (elapsed < stable) {
+            scene.energyChangeOpacity = 1;
+        } else {
+            const fadeoutElapsed = elapsed - stable;
+            scene.energyChangeOpacity = clamp(1 - fadeoutElapsed / fadeout, 0, 1);
+        }
+
+        return false;
+    });
+}
+
 function initView(gameState: GameState): Scene {
     let cards = gameState.board.map((c, index) => {
         const xPos = index % 3;
@@ -99,6 +135,8 @@ function initView(gameState: GameState): Scene {
     return {
         cards,
         energy: gameState.energy,
+        energyChange: 0,
+        energyChangeOpacity: 0,
         path: cloneDeep(gameState.path),
     };
 }
@@ -110,8 +148,13 @@ export let scene: Scene; // TODO Have a more sensible way to share with with ren
 function updateScene(nextStep: GameState, prevStep: GameState, events: GameEvent[]) {
     // Trigger an animation for cards newly added to the path
     for (let event of events) {
-        if (event.type === EventType.PathSelection) {
-            animations.push(animateHighlight(scene.cards[event.selectedIndex], false));
+        switch (event.type) {
+            case EventType.PathSelection:
+                animations.push(animateHighlight(scene.cards[event.selectedIndex], false));
+                break;
+            case EventType.EnergyLoss:
+                animations.push(animateEnergyChange(-event.amount));
+                break;
         }
     }
 
