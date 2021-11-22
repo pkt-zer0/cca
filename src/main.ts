@@ -17,12 +17,16 @@ export interface UICard {
     /** Can be animated between 0 and 1 */
     highlight: number;
 }
+interface Animation {
+    /** Called on each frame of an animation. Return true to indicate the animation has finished. */
+    (timestamp: DOMHighResTimeStamp): boolean;
+}
 
 const $ = document.querySelector.bind(document);
 
 let canvas: HTMLCanvasElement;
 
-const animations: any[] = [];
+const animations: Animation[] = [];
 let currentAnimation: any;
 /** Global multiplier on animation speed. */
 let animationSpeed = 1;
@@ -68,6 +72,16 @@ function animationUpdater(updater: any) {
         return updater(elapsed * animationSpeed);
     }
     return update;
+}
+
+function animateParallel(anims: Animation[]): Animation {
+    return function update(timestamp: DOMHighResTimeStamp) {
+        let done = true;
+        for (const animation of anims) {
+            done = animation(timestamp) && done;
+        }
+        return done;
+    };
 }
 
 /** Tweens a card's highlight value from 0 to 1 over 500ms. */
@@ -146,16 +160,21 @@ const previewStack: GameState[] = [];
 export let scene: Scene; // TODO Have a more sensible way to share with with render.ts
 
 function updateScene(nextStep: GameState, prevStep: GameState, events: GameEvent[]) {
+    // Collect animations for the current frame
+    const newAnimations = [];
     // Trigger an animation for cards newly added to the path
     for (let event of events) {
         switch (event.type) {
             case EventType.PathSelection:
-                animations.push(animateHighlight(scene.cards[event.selectedIndex], false));
+                newAnimations.push(animateHighlight(scene.cards[event.selectedIndex], false));
                 break;
             case EventType.EnergyLoss:
-                animations.push(animateEnergyChange(-event.amount));
+                newAnimations.push(animateEnergyChange(-event.amount));
                 break;
         }
+    }
+    if (newAnimations.length) {
+        animations.push(animateParallel(newAnimations));
     }
 
     nextStep.board.forEach((card, index) => {
