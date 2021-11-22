@@ -43,6 +43,10 @@ export function render() {
 }
 
 function drawPath(ctx: CanvasRenderingContext2D, path: number[]) {
+    if (!path.length) {
+        return;
+    }
+
     const positions = path.map(idx => {
         const cellCoord = indexToCoord(idx);
         const scaled = scaleVec(cellCoord, CELL_SIZE);
@@ -51,8 +55,16 @@ function drawPath(ctx: CanvasRenderingContext2D, path: number[]) {
 
     ctx.save();
 
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
     ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
     ctx.lineWidth = 8;
+
+    const firstPos = positions[0];
+    const radius = 10;
+    ctx.beginPath();
+    ctx.ellipse(firstPos.x, firstPos.y, radius, radius, 0, 0, 2* Math.PI);
+    ctx.fill();
+
     ctx.beginPath();
     for (const position of positions) {
         ctx.lineTo(position.x, position.y);
