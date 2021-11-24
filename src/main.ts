@@ -241,7 +241,46 @@ function init() {
     canvas = $<HTMLCanvasElement>('#screen')!;
     initRenderer(canvas.getContext('2d')!);
 
-    canvas.addEventListener('click', e => {
+    let lastSwipedCell = -1;
+    // NOTE: With fast movements, this can skip over a cell. Checking intersection for a line from the previous position would help.
+    function handleMove(e: MouseEvent) {
+        // FIXME: Check perf
+        // TODO: Cache bounding rect
+        const origin = canvas.getBoundingClientRect();
+        const relative = {
+            x: e.clientX - origin.x,
+            y: e.clientY - origin.y,
+        };
+        const cell = hitTestCellsSwipe(relative);
+        // New cell selected
+        if (cell !== lastSwipedCell && cell !== -1) {
+            lastSwipedCell = cell;
+
+            const cellIndex = cell;
+            const latestState = previewStack.length ? last(previewStack)! : committedState;
+
+            const currentPath = latestState.path;
+            if (currentPath.length > 1 && currentPath[currentPath.length-2] === cellIndex) {
+                // Moved back to next-to-last cell in path, revert one step
+                undo();
+            } else {
+                // TODO Deduplicate
+                // Selected card not in path, try moving forward with it
+                const nextStep = next(latestState, cellIndex);
+                if (nextStep instanceof Error) {
+                    console.log(nextStep.message);
+                    return;
+                }
+
+                previewStack.push(nextStep.state);
+                updateScene(nextStep.state, latestState, nextStep.events);
+            }
+
+            render();
+        }
+    }
+
+    canvas.addEventListener('mousedown', e => {
         // TODO: Cache this, recalc on change only
         const origin = canvas.getBoundingClientRect();
         const relative = {
@@ -250,15 +289,18 @@ function init() {
         };
 
         const cellIndex = hitTestCells(relative);
+        // Initial click outside board, ignore it
         if (cellIndex === -1) {
-            return; // Clicked empty space
+            return;
         }
 
+        // Get current path to check if it's already selected
         const latestState = previewStack.length ? last(previewStack)! : committedState;
-
         const currentPath = latestState.path;
         const indexInPath = currentPath.indexOf(cellIndex);
+
         if (indexInPath === -1) {
+            // TODO Deduplicate
             // Selected card not in path, try moving forward with it
             const nextStep = next(latestState, cellIndex);
             if (nextStep instanceof Error) {
@@ -268,16 +310,27 @@ function init() {
 
             previewStack.push(nextStep.state);
             updateScene(nextStep.state, latestState, nextStep.events);
-            render();
-        } else {
-            // Clicked already selected card, roll back to the step before it
-            const undoCount = currentPath.length - indexInPath;
+        }
+        else {
+            // Clicked already selected card
+            const stepsFromLast = currentPath.length - indexInPath - 1;
+            // If it's the last card deselect just that one. Otherwise, everything after it.
+            const undoCount = stepsFromLast !== 0 ? stepsFromLast : 1;
             for (let i = 0; i < undoCount; i += 1) {
                 undo();
             }
-            render();
         }
+
+        // Enable swiping for successive cards
+        canvas.addEventListener('mousemove', handleMove);
+        lastSwipedCell = cellIndex;
+
+        render();
     });
+    document.addEventListener('mouseup', () => {
+        canvas.removeEventListener('mousemove', handleMove);
+    });
+
     $<HTMLButtonElement>('#commit')!.addEventListener('click', () => {
         if (!previewStack.length) {
             return;

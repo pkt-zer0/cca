@@ -11,10 +11,10 @@ Run `yarn install` to install dependencies, then `yarn start` to start the devel
 - Immutable preview state to eliminate bugs from path cancelling
 - Interaction decoupled from animation for zero-delay inputs
 - Fast mode support
+- Swipe selection
 
 # Goals
 - Cancellable / undoable animations
-- Swipe selection
 
 # Non-goals
 - Pretty graphics
