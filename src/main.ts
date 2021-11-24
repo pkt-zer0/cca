@@ -1,6 +1,6 @@
 import { Card, EventType, GameEvent, GameState, initGame, next } from './game';
 import { clamp, cloneDeep, last } from 'lodash';
-import { addVec, scaleVec, v2, Vector2 } from './util';
+import { addVec, scaleVec, subVec, v2, Vector2 } from './util';
 import { CELL_SIZE, init as initRenderer, render } from './render';
 
 export interface Scene {
@@ -197,6 +197,46 @@ function undo() {
     updateScene(latestState, prevState, []);
 }
 
+/** Returns the index of cell (full-size) at the given point, or -1 if there's no hit. */
+function hitTestCells(point: Vector2): number {
+    if (point.x > 300 || point.y > 300) {
+        return -1; // Outside input region
+    }
+
+    const xIndex = clamp(Math.floor(point.x / CELL_SIZE), 0, 2);
+    const yIndex = clamp(Math.floor(point.y / CELL_SIZE), 0, 2);
+    return yIndex * 3 + xIndex;
+}
+
+function insideRect(point: Vector2, topLeft: Vector2, bottomRight: Vector2) {
+    return point.x >= topLeft.x
+        && point.x <= bottomRight.x
+        && point.y >= topLeft.y
+        && point.y <= bottomRight.y;
+}
+
+const centerOffset = v2(CELL_SIZE / 2, CELL_SIZE / 2);
+const hitOffset = v2(40, 40);
+/** Returns the index of cell at the given point when swiping, or -1 if there's no hit.
+ *
+ *  Uses a smaller hitbox, for easier diagonal swiping.
+ */
+function hitTestCellsSwipe(point: Vector2): number {
+    // TODO: Compute these bounds just once
+    for (let cellIndex = 0; cellIndex < 9; cellIndex += 1) {
+        const xOrigin = (cellIndex % 3) * CELL_SIZE;
+        const yOrigin = Math.floor(cellIndex / 3) * CELL_SIZE;
+        const origin = v2(xOrigin, yOrigin);
+        const center = addVec(origin, centerOffset);
+        const hitTopLeft = subVec(center, hitOffset);
+        const hitBottomRight = addVec(center, hitOffset);
+        if (insideRect(point, hitTopLeft, hitBottomRight)) {
+            return cellIndex;
+        }
+    }
+    return -1;
+}
+
 function init() {
     canvas = $<HTMLCanvasElement>('#screen')!;
     initRenderer(canvas.getContext('2d')!);
@@ -209,12 +249,10 @@ function init() {
             y: e.clientY - origin.y,
         };
 
-        if (relative.x > 300 || relative.y > 300) {
-            return; // Outside input region
+        const cellIndex = hitTestCells(relative);
+        if (cellIndex === -1) {
+            return; // Clicked empty space
         }
-        const xIndex = clamp(Math.floor(relative.x / CELL_SIZE), 0, 2);
-        const yIndex = clamp(Math.floor(relative.y / CELL_SIZE), 0, 2);
-        const cellIndex = yIndex * 3 + xIndex;
 
         const latestState = previewStack.length ? last(previewStack)! : committedState;
 
@@ -234,12 +272,11 @@ function init() {
         } else {
             // Clicked already selected card, roll back to the step before it
             const undoCount = currentPath.length - indexInPath;
-            for (let i = 0; i < undoCount; i++) {
+            for (let i = 0; i < undoCount; i += 1) {
                 undo();
             }
             render();
         }
-
     });
     $<HTMLButtonElement>('#commit')!.addEventListener('click', () => {
         if (!previewStack.length) {
