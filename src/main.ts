@@ -159,8 +159,9 @@ let committedState: GameState;
 const previewStack: GameState[] = [];
 export let scene: Scene; // TODO Have a more sensible way to share with with render.ts
 
-function updateScene(nextStep: GameState, prevStep: GameState, events: GameEvent[]) {
-    // Collect animations for the current frame
+// TODO Distinct solution for undo animations
+/** Collect animations for the current step */
+function getAnimations(events: GameEvent[]): Animation[] {
     const newAnimations = [];
     // Trigger an animation for cards newly added to the path
     for (let event of events) {
@@ -173,28 +174,20 @@ function updateScene(nextStep: GameState, prevStep: GameState, events: GameEvent
                 break;
         }
     }
-    if (newAnimations.length) {
-        animations.push(animateParallel(newAnimations));
-    }
 
-    nextStep.board.forEach((card, index) => {
-        // Highlight cards on the path
-        const inPath = nextStep.path.includes(index);
-        const wasInPath = prevStep.path.includes(index);
-        // TODO This is an animation being reverted, needs a distinct solution
-        if (!inPath && wasInPath) {
-            // Removed from path
-            animations.push(animateHighlight(scene.cards[index], true));
-        }
-    });
+    return newAnimations.length ? [animateParallel(newAnimations)] : [];
+}
+
+function updateScene(nextStep: GameState) {
     scene.energy = nextStep.energy;
     scene.path = cloneDeep(nextStep.path);
 }
 
 function undo() {
-    const prevState = previewStack.pop()!;
+    previewStack.pop();
     const latestState = previewStack.length ? last(previewStack)! : committedState;
-    updateScene(latestState, prevState, []);
+    // FIXME: Add undo animations for the reverted step
+    updateScene(latestState);
 }
 
 /** Returns the index of cell (full-size) at the given point, or -1 if there's no hit. */
@@ -273,7 +266,8 @@ function init() {
                 }
 
                 previewStack.push(nextStep.state);
-                updateScene(nextStep.state, latestState, nextStep.events);
+                animations.push(...getAnimations(nextStep.events));
+                updateScene(nextStep.state);
             }
 
             render();
@@ -309,7 +303,8 @@ function init() {
             }
 
             previewStack.push(nextStep.state);
-            updateScene(nextStep.state, latestState, nextStep.events);
+            animations.push(...getAnimations(nextStep.events));
+            updateScene(nextStep.state);
         }
         else {
             // Clicked already selected card
@@ -339,7 +334,7 @@ function init() {
         committedState = endTurn(previous);
         previewStack.length = 0;
         // TODO: Entirely different animation logic needed here
-        updateScene(committedState, previous, []);
+        updateScene(committedState);
         render();
     });
     $<HTMLButtonElement>('#undo')!.addEventListener('click', () => {
