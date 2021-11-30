@@ -1,4 +1,4 @@
-import { Card, EventType, GameEvent, GameState, initGame, next } from './game';
+import { Card, endTurn, EventType, GameEvent, GameState, initGame, next } from './game';
 import { clamp, cloneDeep, last } from 'lodash';
 import { addVec, scaleVec, subVec, v2, Vector2 } from './util';
 import { CELL_SIZE, init as initRenderer, render } from './render';
@@ -335,8 +335,12 @@ function init() {
         if (!previewStack.length) {
             return;
         }
-        committedState = last(previewStack)!;
+        const previous = last(previewStack)!;
+        committedState = endTurn(previous);
         previewStack.length = 0;
+        // TODO: Entirely different animation logic needed here
+        updateScene(committedState, previous, []);
+        render();
     });
     $<HTMLButtonElement>('#undo')!.addEventListener('click', () => {
         undo();

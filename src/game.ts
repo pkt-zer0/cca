@@ -108,6 +108,14 @@ export function next(prev: GameState, input: number): StepResult | Error {
     return { state, events };
 }
 
+export function endTurn(prev: GameState): GameState {
+    const state = cloneDeep(prev);
+    state.path = [];
+
+    // NOTE: Discard selected cards, trigger end-of-turn events, etc.
+    return state;
+}
+
 export function indexToCoord(index: number): Vector2 {
     const x = index % 3;
     const y = Math.floor(index / 3);
