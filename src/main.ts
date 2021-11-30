@@ -190,6 +190,19 @@ function undo() {
     updateScene(latestState);
 }
 
+function advance(state: GameState, inputCellIndex: number): boolean {
+    const nextStep = next(state, inputCellIndex);
+    if (nextStep instanceof Error) {
+        console.log(nextStep.message);
+        return true;
+    }
+
+    previewStack.push(nextStep.state);
+    animations.push(...getAnimations(nextStep.events));
+    updateScene(nextStep.state);
+    return false;
+}
+
 /** Returns the index of cell (full-size) at the given point, or -1 if there's no hit. */
 function hitTestCells(point: Vector2): number {
     if (point.x > 300 || point.y > 300) {
@@ -257,17 +270,11 @@ function init() {
                 // Moved back to next-to-last cell in path, revert one step
                 undo();
             } else {
-                // TODO Deduplicate
                 // Selected card not in path, try moving forward with it
-                const nextStep = next(latestState, cellIndex);
-                if (nextStep instanceof Error) {
-                    console.log(nextStep.message);
+                const invalidMove = advance(latestState, cellIndex);
+                if (invalidMove) {
                     return;
                 }
-
-                previewStack.push(nextStep.state);
-                animations.push(...getAnimations(nextStep.events));
-                updateScene(nextStep.state);
             }
 
             render();
@@ -294,17 +301,11 @@ function init() {
         const indexInPath = currentPath.indexOf(cellIndex);
 
         if (indexInPath === -1) {
-            // TODO Deduplicate
             // Selected card not in path, try moving forward with it
-            const nextStep = next(latestState, cellIndex);
-            if (nextStep instanceof Error) {
-                console.log(nextStep.message);
+            const invalidMove = advance(latestState, cellIndex);
+            if (invalidMove) {
                 return;
             }
-
-            previewStack.push(nextStep.state);
-            animations.push(...getAnimations(nextStep.events));
-            updateScene(nextStep.state);
         }
         else {
             // Clicked already selected card
