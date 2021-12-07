@@ -12,9 +12,10 @@ Run `yarn install` to install dependencies, then `yarn start` to start the devel
 - Interaction decoupled from animation for zero-delay inputs
 - Fast mode support
 - Swipe selection
+- Cancellable animations
 
 # Goals
-- Cancellable / undoable animations
+- Revertible animations
 
 # Non-goals
 - Pretty graphics

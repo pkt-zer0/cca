@@ -28,26 +28,32 @@ let canvas: HTMLCanvasElement;
 
 const animations: Animation[] = [];
 let currentAnimation: any;
+
+const previewAnimations: Animation[] = []; // Animations for each step of the current turn
+let animatedUntil = 0; // Last step for which animations have finished
+let currentlyAnimating = -1; // Index of currently running animation
+
 /** Global multiplier on animation speed. */
 let animationSpeed = 1;
 let turboMode = false;
 
 /** Runs on each frame, updates animations if needed. */
 function runAnimations(timestamp: DOMHighResTimeStamp) {
-    // TODO: Don't run RAF callback if we have no active/pending animations
-    if (!currentAnimation && !animations.length) {
-        // No pending/running animations, we're done
-    }
-
     if (currentAnimation) {
         // Process current anim
         const done = currentAnimation(timestamp);
         if (done) {
             currentAnimation = undefined;
+            animatedUntil += 1;
         }
-    } else if (animations.length) {
-        // TODO: We should start this already on the current frame, not just the next
-        currentAnimation = animations.shift();
+    } else {
+        // TODO: Decouple animation and gaemplay-triggered anim tracking/scheduling
+        // We have a new anim to play
+        if (previewAnimations.length > animatedUntil) {
+            currentlyAnimating += 1;
+            currentAnimation = previewAnimations[currentlyAnimating];
+        }
+        // TODO This only handles the turn-synchronized animations now, not background ones
     }
 }
 
@@ -185,6 +191,10 @@ function updateScene(nextStep: GameState) {
 
 function undo() {
     previewStack.pop();
+    // Cancel animations not yet played
+    if (previewAnimations.length > currentlyAnimating) {
+        previewAnimations.pop();
+    }
     const latestState = previewStack.length ? last(previewStack)! : committedState;
     // FIXME: Add undo animations for the reverted step
     updateScene(latestState);
@@ -198,7 +208,7 @@ function advance(state: GameState, inputCellIndex: number): boolean {
     }
 
     previewStack.push(nextStep.state);
-    animations.push(...getAnimations(nextStep.events));
+    previewAnimations.push(...getAnimations(nextStep.events));
     updateScene(nextStep.state);
     return false;
 }
@@ -334,6 +344,8 @@ function init() {
         const previous = last(previewStack)!;
         committedState = endTurn(previous);
         previewStack.length = 0;
+        animatedUntil = 0;
+        currentlyAnimating = -1;
         // TODO: Entirely different animation logic needed here
         updateScene(committedState);
         render();
