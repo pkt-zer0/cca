@@ -1,6 +1,6 @@
 import { Card, endTurn, EventType, GameEvent, GameState, initGame, next } from './game';
-import { clamp, cloneDeep, last } from 'lodash';
-import { addVec, scaleVec, subVec, v2, Vector2 } from './util';
+import { clamp, cloneDeep, last, times } from 'lodash';
+import { addVec, Rectangle, scaleVec, subVec, v2, Vector2 } from './util';
 import { CELL_SIZE, init as initRenderer, render } from './render';
 
 export interface Scene {
@@ -233,20 +233,26 @@ function insideRect(point: Vector2, topLeft: Vector2, bottomRight: Vector2) {
 
 const centerOffset = v2(CELL_SIZE / 2, CELL_SIZE / 2);
 const hitOffset = v2(40, 40);
+const swipeCellRects: Rectangle[] = times(9, cellIndex => {
+    const xOrigin = (cellIndex % 3) * CELL_SIZE;
+    const yOrigin = Math.floor(cellIndex / 3) * CELL_SIZE;
+    const origin = v2(xOrigin, yOrigin);
+    const center = addVec(origin, centerOffset);
+    const topLeft = subVec(center, hitOffset);
+    const bottomRight = addVec(center, hitOffset);
+    return {
+        topLeft: topLeft,
+        bottomRight: bottomRight,
+    };
+});
 /** Returns the index of cell at the given point when swiping, or -1 if there's no hit.
  *
  *  Uses a smaller hitbox, for easier diagonal swiping.
  */
 function hitTestCellsSwipe(point: Vector2): number {
-    // TODO: Compute these bounds just once
     for (let cellIndex = 0; cellIndex < 9; cellIndex += 1) {
-        const xOrigin = (cellIndex % 3) * CELL_SIZE;
-        const yOrigin = Math.floor(cellIndex / 3) * CELL_SIZE;
-        const origin = v2(xOrigin, yOrigin);
-        const center = addVec(origin, centerOffset);
-        const hitTopLeft = subVec(center, hitOffset);
-        const hitBottomRight = addVec(center, hitOffset);
-        if (insideRect(point, hitTopLeft, hitBottomRight)) {
+        const { topLeft, bottomRight } = swipeCellRects[cellIndex];
+        if (insideRect(point, topLeft, bottomRight)) {
             return cellIndex;
         }
     }

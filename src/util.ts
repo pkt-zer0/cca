@@ -3,6 +3,11 @@ export interface Vector2 {
     y: number;
 }
 
+export interface Rectangle {
+    topLeft: Vector2;
+    bottomRight: Vector2;
+}
+
 export function v2(x: number, y: number): Vector2 {
     return { x, y };
 }
