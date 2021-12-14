@@ -263,12 +263,23 @@ function init() {
     canvas = $<HTMLCanvasElement>('#screen')!;
     initRenderer(canvas.getContext('2d')!);
 
+    // Track updates to bounding rectangle of canvas, only update if needed
+    let _canvasOrigin: DOMRect | null = null;
+    function getCanvasOrigin() {
+        if (!_canvasOrigin) {
+            _canvasOrigin = canvas.getBoundingClientRect();
+        }
+        return _canvasOrigin;
+    }
+    // Invalidate cached origin on resize/scroll
+    window.addEventListener('resize', () => { _canvasOrigin = null; });
+    document.addEventListener('scroll', () => { _canvasOrigin = null; });
+
     let lastSwipedCell = -1;
     // NOTE: With fast movements, this can skip over a cell. Checking intersection for a line from the previous position would help.
     function handleMove(e: MouseEvent) {
         // FIXME: Check perf
-        // TODO: Cache bounding rect
-        const origin = canvas.getBoundingClientRect();
+        const origin = getCanvasOrigin();
         const relative = {
             x: e.clientX - origin.x,
             y: e.clientY - origin.y,
@@ -298,8 +309,7 @@ function init() {
     }
 
     canvas.addEventListener('mousedown', e => {
-        // TODO: Cache this, recalc on change only
-        const origin = canvas.getBoundingClientRect();
+        const origin = getCanvasOrigin();
         const relative = {
             x: e.clientX - origin.x,
             y: e.clientY - origin.y,
