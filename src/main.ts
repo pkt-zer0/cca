@@ -75,12 +75,14 @@ requestAnimationFrame(rafCallback);
  * The returned animation starts running when first invoked, and tracks elapsed time since then.
  */
 function animationUpdater(updater: any) {
-    let start: number | undefined = undefined;
+    let prevTimestamp: number | undefined = undefined;
+    let elapsed = 0;
     function update(timestamp: DOMHighResTimeStamp) {
-        if (!start) { start = timestamp; }
-        const elapsed = timestamp - start;
-        // TODO This won't work correctly when changing speed mid-animation
-        return updater(elapsed * animationSpeed);
+        if (!prevTimestamp) { prevTimestamp = timestamp; }
+        const delta = timestamp - prevTimestamp;
+        prevTimestamp = timestamp;
+        elapsed += delta * animationSpeed;
+        return updater(elapsed);
     }
     return update;
 }
@@ -98,7 +100,6 @@ function animateParallel(anims: Animation[]): Animation {
 /** Tweens a card's highlight value from 0 to 1 over 500ms. */
 function animateHighlight(card: UICard, reverse: boolean) {
     const duration = 500;
-    // TODO: Use an explicit object instead of a func + closure
     return animationUpdater((elapsed: DOMHighResTimeStamp) => {
         // Animation over
         if (elapsed >= duration) { return true; }
