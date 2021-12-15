@@ -37,6 +37,11 @@ let currentlyAnimating = -1; // Index of currently running animation
 let animationSpeed = 1;
 let turboMode = false;
 
+function setTurbo(newState: boolean) {
+    turboMode = newState;
+    animationSpeed = turboMode ? 4 : 1;
+}
+
 /** Runs on each frame, updates animations if needed. */
 function runAnimations(timestamp: DOMHighResTimeStamp) {
     if (currentAnimation) {
@@ -370,9 +375,23 @@ function init() {
         undo();
         render();
     });
-    $<HTMLInputElement>('#turbo')!.addEventListener('change', () => {
-        turboMode = !turboMode;
-        animationSpeed = turboMode ? 4 : 1;
+
+    // Support toggled and hold-to-enable turbo mode
+    const turboButton = $<HTMLInputElement>('#turbo')!;
+    turboButton.addEventListener('change', () => {
+        setTurbo(turboButton.checked);
+    });
+    const TURBO_KEY = 't';
+    document.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.repeat) { return; }
+        if (e.key !== TURBO_KEY) { return; }
+        setTurbo(true);
+        turboButton.checked = true;
+    });
+    document.addEventListener('keyup', (e: KeyboardEvent) => {
+        if (e.key !== TURBO_KEY) { return; }
+        setTurbo(false);
+        turboButton.checked = false;
     });
 
     const gameState = initGame();
