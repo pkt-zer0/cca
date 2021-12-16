@@ -30,7 +30,16 @@ export function initScene(initialScene: Scene) {
 
 export let scene: Scene;
 
+let needsRender = true;
+export function invalidate() {
+    needsRender = true;
+}
+
 export function render() {
+    if (!needsRender) {
+        return;
+    }
+
     ctx.save();
 
     ctx.clearRect(0, 0, CANVAS_SIZE.x, CANVAS_SIZE.y);
@@ -60,6 +69,7 @@ export function render() {
     drawPath(ctx, scene.path);
 
     ctx.restore();
+    needsRender = false;
 }
 
 function drawPath(ctx: CanvasRenderingContext2D, path: number[]) {

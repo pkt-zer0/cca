@@ -1,4 +1,4 @@
-import { render, scene, UICard } from './render';
+import { invalidate, render, scene, UICard } from './render';
 import { clamp } from 'lodash';
 
 export interface Animation {
@@ -31,6 +31,7 @@ function runAnimations(timestamp: DOMHighResTimeStamp) {
             currentAnimation = undefined;
             animatedUntil += 1;
         }
+        invalidate();
     } else {
         // TODO: Decouple animation and gaemplay-triggered anim tracking/scheduling
         // We have a new anim to play

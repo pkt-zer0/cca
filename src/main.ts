@@ -1,7 +1,7 @@
 import { endTurn, EventType, GameEvent, GameState, initGame, next } from './game';
 import { clamp, cloneDeep, last, times } from 'lodash';
 import { addVec, Rectangle, scaleVec, subVec, v2, Vector2 } from './util';
-import { CELL_SIZE, init as initRenderer, initScene, render, Scene, scene } from './render';
+import { CELL_SIZE, init as initRenderer, initScene, invalidate, Scene, scene } from './render';
 import {
     animateEnergyChange,
     animateHighlight,
@@ -64,6 +64,7 @@ function getAnimations(events: GameEvent[]): Animation[] {
 function updateScene(nextStep: GameState) {
     scene.energy = nextStep.energy;
     scene.path = cloneDeep(nextStep.path);
+    invalidate();
 }
 
 function undo() {
@@ -179,7 +180,7 @@ function init() {
                 }
             }
 
-            render();
+            invalidate();
         }
     }
 
@@ -222,7 +223,7 @@ function init() {
         canvas.addEventListener('mousemove', handleMove);
         lastSwipedCell = cellIndex;
 
-        render();
+        invalidate();
     });
     document.addEventListener('mouseup', () => {
         canvas.removeEventListener('mousemove', handleMove);
@@ -238,11 +239,9 @@ function init() {
         clearPreviewAnims();
         // TODO: Entirely different animation logic needed here
         updateScene(committedState);
-        render();
     });
     $<HTMLButtonElement>('#undo')!.addEventListener('click', () => {
         undo();
-        render();
     });
 
     // Support toggled and hold-to-enable turbo mode
