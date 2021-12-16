@@ -1,22 +1,8 @@
-import { Card, endTurn, EventType, GameEvent, GameState, initGame, next } from './game';
+import { endTurn, EventType, GameEvent, GameState, initGame, next } from './game';
 import { clamp, cloneDeep, last, times } from 'lodash';
 import { addVec, Rectangle, scaleVec, subVec, v2, Vector2 } from './util';
-import { CELL_SIZE, init as initRenderer, render } from './render';
+import { CELL_SIZE, init as initRenderer, initScene, render, Scene, scene, UICard } from './render';
 
-export interface Scene {
-    cards: UICard[];
-    // TODO: For simplicity, just copy the entire game state?
-    energy: number;
-    energyChange: number;
-    energyChangeOpacity: number;
-    path: number[];
-}
-export interface UICard {
-    card: Card;
-    position: Vector2;
-    /** Can be animated between 0 and 1 */
-    highlight: number;
-}
 interface Animation {
     /** Called on each frame of an animation. Return true to indicate the animation has finished. */
     (timestamp: DOMHighResTimeStamp): boolean;
@@ -169,7 +155,6 @@ function initView(gameState: GameState): Scene {
 
 let committedState: GameState;
 const previewStack: GameState[] = [];
-export let scene: Scene; // TODO Have a more sensible way to share with with render.ts
 
 // TODO Distinct solution for undo animations
 /** Collect animations for the current step */
@@ -396,7 +381,7 @@ function init() {
     });
 
     const gameState = initGame();
-    scene = initView(gameState);
+    initScene(initView(gameState));
     committedState = gameState;
 
     render();

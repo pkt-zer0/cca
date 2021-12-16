@@ -1,6 +1,21 @@
-import { indexToCoord } from './game';
-import { scene, UICard } from './main';
-import { addVec, scaleVec, v2 } from './util';
+import { Card, indexToCoord } from './game';
+import { addVec, scaleVec, v2, Vector2 } from './util';
+
+export interface Scene {
+    cards: UICard[];
+    // TODO: For simplicity, just copy the entire game state?
+    energy: number;
+    energyChange: number;
+    energyChangeOpacity: number;
+    path: number[];
+}
+
+export interface UICard {
+    card: Card;
+    position: Vector2;
+    /** Can be animated between 0 and 1 */
+    highlight: number;
+}
 
 const CANVAS_SIZE = v2(300, 400);
 export const CELL_SIZE = 100;
@@ -9,6 +24,11 @@ let ctx: CanvasRenderingContext2D;
 export function init(context: CanvasRenderingContext2D) {
     ctx = context;
 }
+export function initScene(initialScene: Scene) {
+    scene = initialScene;
+}
+
+export let scene: Scene;
 
 export function render() {
     ctx.save();
