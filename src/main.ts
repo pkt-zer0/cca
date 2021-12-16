@@ -1,136 +1,22 @@
 import { endTurn, EventType, GameEvent, GameState, initGame, next } from './game';
 import { clamp, cloneDeep, last, times } from 'lodash';
 import { addVec, Rectangle, scaleVec, subVec, v2, Vector2 } from './util';
-import { CELL_SIZE, init as initRenderer, initScene, render, Scene, scene, UICard } from './render';
-
-interface Animation {
-    /** Called on each frame of an animation. Return true to indicate the animation has finished. */
-    (timestamp: DOMHighResTimeStamp): boolean;
-}
+import { CELL_SIZE, init as initRenderer, initScene, render, Scene, scene } from './render';
+import {
+    animateEnergyChange,
+    animateHighlight,
+    animateParallel,
+    Animation,
+    clearPreviewAnims,
+    initAnims,
+    scheduleAnims,
+    setTurbo,
+    undoLastAnim,
+} from './anim';
 
 const $ = document.querySelector.bind(document);
 
 let canvas: HTMLCanvasElement;
-
-const animations: Animation[] = [];
-let currentAnimation: any;
-
-const previewAnimations: Animation[] = []; // Animations for each step of the current turn
-let animatedUntil = 0; // Last step for which animations have finished
-let currentlyAnimating = -1; // Index of currently running animation
-
-/** Global multiplier on animation speed. */
-let animationSpeed = 1;
-let turboMode = false;
-
-function setTurbo(newState: boolean) {
-    turboMode = newState;
-    animationSpeed = turboMode ? 4 : 1;
-}
-
-/** Runs on each frame, updates animations if needed. */
-function runAnimations(timestamp: DOMHighResTimeStamp) {
-    if (currentAnimation) {
-        // Process current anim
-        const done = currentAnimation(timestamp);
-        if (done) {
-            currentAnimation = undefined;
-            animatedUntil += 1;
-        }
-    } else {
-        // TODO: Decouple animation and gaemplay-triggered anim tracking/scheduling
-        // We have a new anim to play
-        if (previewAnimations.length > animatedUntil) {
-            currentlyAnimating += 1;
-            currentAnimation = previewAnimations[currentlyAnimating];
-        }
-        // TODO This only handles the turn-synchronized animations now, not background ones
-    }
-}
-
-/** Wrapper for animation handling logic so the inner function can early-exit */
-function rafCallback(timestamp: DOMHighResTimeStamp) {
-    runAnimations(timestamp);
-    render();
-    requestAnimationFrame(rafCallback);
-}
-requestAnimationFrame(rafCallback);
-
-/** Produces an animation callback from an updater function that works with elapsed time.
- *
- * The returned animation starts running when first invoked, and tracks elapsed time since then.
- */
-function animationUpdater(updater: any) {
-    let prevTimestamp: number | undefined = undefined;
-    let elapsed = 0;
-    function update(timestamp: DOMHighResTimeStamp) {
-        if (!prevTimestamp) { prevTimestamp = timestamp; }
-        const delta = timestamp - prevTimestamp;
-        prevTimestamp = timestamp;
-        elapsed += delta * animationSpeed;
-        return updater(elapsed);
-    }
-    return update;
-}
-
-function animateParallel(anims: Animation[]): Animation {
-    return function update(timestamp: DOMHighResTimeStamp) {
-        let done = true;
-        for (const animation of anims) {
-            done = animation(timestamp) && done;
-        }
-        return done;
-    };
-}
-
-/** Tweens a card's highlight value from 0 to 1 over 500ms. */
-function animateHighlight(card: UICard, reverse: boolean) {
-    const duration = 500;
-    return animationUpdater((elapsed: DOMHighResTimeStamp) => {
-        // Animation over
-        if (elapsed >= duration) { return true; }
-
-        card.highlight = !reverse ?
-            clamp(elapsed / duration, 0, 1) :
-            clamp(1 - (elapsed / duration), 0, 1);
-
-        return false;
-    });
-}
-
-function animateEnergyChange(amount: number) {
-    const rampUp = 200;
-    const stable = 800;
-    const duration = 1600;
-    const fadeout = duration - stable;
-
-    return animationUpdater((elapsed: DOMHighResTimeStamp) => {
-        // Skipped in turbo mode
-        if (turboMode) {
-            scene.energyChangeOpacity = 0;
-            return true;
-        }
-
-        scene.energyChange = amount; // TODO: Only set this once
-        // Animation over
-        if (elapsed >= duration) {
-            scene.energyChangeOpacity = 0;
-            return true;
-        }
-
-        // Three phases for the animation: fade in, stay, fade out
-        if (elapsed < rampUp) {
-            scene.energyChangeOpacity = clamp(elapsed / rampUp, 0, 1);
-        } else if (elapsed < stable) {
-            scene.energyChangeOpacity = 1;
-        } else {
-            const fadeoutElapsed = elapsed - stable;
-            scene.energyChangeOpacity = clamp(1 - fadeoutElapsed / fadeout, 0, 1);
-        }
-
-        return false;
-    });
-}
 
 function initView(gameState: GameState): Scene {
     let cards = gameState.board.map((c, index) => {
@@ -183,9 +69,7 @@ function updateScene(nextStep: GameState) {
 function undo() {
     previewStack.pop();
     // Cancel animations not yet played
-    if (previewAnimations.length > currentlyAnimating) {
-        previewAnimations.pop();
-    }
+    undoLastAnim();
     const latestState = previewStack.length ? last(previewStack)! : committedState;
     // FIXME: Add undo animations for the reverted step
     updateScene(latestState);
@@ -199,7 +83,7 @@ function advance(state: GameState, inputCellIndex: number): boolean {
     }
 
     previewStack.push(nextStep.state);
-    previewAnimations.push(...getAnimations(nextStep.events));
+    scheduleAnims(...getAnimations(nextStep.events));
     updateScene(nextStep.state);
     return false;
 }
@@ -351,8 +235,7 @@ function init() {
         const previous = last(previewStack)!;
         committedState = endTurn(previous);
         previewStack.length = 0;
-        animatedUntil = 0;
-        currentlyAnimating = -1;
+        clearPreviewAnims();
         // TODO: Entirely different animation logic needed here
         updateScene(committedState);
         render();
@@ -381,10 +264,9 @@ function init() {
     });
 
     const gameState = initGame();
-    initScene(initView(gameState));
     committedState = gameState;
-
-    render();
+    initScene(initView(gameState));
+    initAnims();
 }
 
 document.addEventListener('DOMContentLoaded', init);
