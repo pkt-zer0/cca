@@ -1,4 +1,4 @@
-import { cloneDeep, last, shuffle, times } from 'lodash';
+import { last, shuffle, times } from 'lodash';
 import { v2, Vector2 } from './util';
 
 export interface Card {
@@ -39,6 +39,30 @@ export interface StepResult {
     events: GameEvent[];
 }
 
+function cloneCards(cards: Card[]): Card[] {
+    const length = cards.length;
+    const result: Card[] = new Array(length);
+    for (let i = 0; i < length; i += 1) {
+        const original = cards[i];
+        result[i] = {
+            cost: original.cost
+        };
+    }
+    return result;
+}
+
+function cloneState(original: GameState): GameState {
+    return {
+        energy: original.energy,
+        health: original.health,
+        gold: original.gold,
+        path: [...original.path],
+        board: cloneCards(original.board),
+        deck: cloneCards(original.deck),
+        discard: cloneCards(original.discard),
+    };
+}
+
 export function initGame(): GameState {
     const startingDeck: Card[] = times(15, i => {
         return {
@@ -76,7 +100,7 @@ function isAdjacent(startIndex: number, endIndex: number) {
 /** Returns the new game state given the previous one and the current input. */
 export function next(prev: GameState, input: number): StepResult | Error {
     // Copy original state so we can mutate it and remain a pure function
-    const state = cloneDeep(prev);
+    const state = cloneState(prev);
     const events: GameEvent[] = [];
     const selectedIndex = input;
 
@@ -109,7 +133,7 @@ export function next(prev: GameState, input: number): StepResult | Error {
 }
 
 export function endTurn(prev: GameState): GameState {
-    const state = cloneDeep(prev);
+    const state = cloneState(prev);
     state.path = [];
 
     // NOTE: Discard selected cards, trigger end-of-turn events, etc.
