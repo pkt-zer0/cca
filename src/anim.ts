@@ -23,7 +23,7 @@ let animatedUntil = 0; // Last step for which animations have finished
 let currentlyAnimating = -1; // Index of currently running animation
 
 /** Runs on each frame, updates animations if needed. */
-function runAnimations(timestamp: DOMHighResTimeStamp) {
+export function updateAnimations(timestamp: DOMHighResTimeStamp): void {
     if (currentAnimation) {
         // Process current anim
         const done = currentAnimation(timestamp);
@@ -41,13 +41,6 @@ function runAnimations(timestamp: DOMHighResTimeStamp) {
         }
         // TODO This only handles the turn-synchronized animations now, not background ones
     }
-}
-
-/** Wrapper for animation handling logic so the inner function can early-exit */
-export function rafCallback(timestamp: DOMHighResTimeStamp) {
-    runAnimations(timestamp);
-    render();
-    requestAnimationFrame(rafCallback);
 }
 
 export function scheduleAnims(...anims: Animation[]) {
@@ -146,8 +139,4 @@ export function animateEnergyChange(amount: number) {
 
         return false;
     });
-}
-
-export function initAnims() {
-    requestAnimationFrame(rafCallback);
 }

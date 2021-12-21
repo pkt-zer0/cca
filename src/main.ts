@@ -1,17 +1,17 @@
 import { endTurn, EventType, GameEvent, GameState, initGame, next } from './game';
 import { clamp, cloneDeep, last, times } from 'lodash';
 import { addVec, Rectangle, scaleVec, subVec, v2, Vector2 } from './util';
-import { CELL_SIZE, init as initRenderer, initScene, invalidate, Scene, scene } from './render';
+import { CELL_SIZE, init as initRenderer, initScene, invalidate, render, Scene, scene } from './render';
 import {
     animateEnergyChange,
     animateHighlight,
     animateParallel,
     Animation,
     clearPreviewAnims,
-    initAnims,
     scheduleAnims,
     setTurbo,
     undoLastAnim,
+    updateAnimations,
 } from './anim';
 
 const $ = document.querySelector.bind(document);
@@ -74,6 +74,18 @@ function undo() {
     const latestState = previewStack.length ? last(previewStack)! : committedState;
     // FIXME: Add undo animations for the reverted step
     updateScene(latestState);
+}
+
+function commit() {
+    if (!previewStack.length) {
+        return;
+    }
+    const previous = last(previewStack)!;
+    committedState = endTurn(previous);
+    previewStack.length = 0;
+    clearPreviewAnims();
+    // TODO: Entirely different animation logic needed here
+    updateScene(committedState);
 }
 
 function advance(state: GameState, inputCellIndex: number): boolean {
@@ -183,8 +195,7 @@ function init() {
             invalidate();
         }
     }
-
-    canvas.addEventListener('mousedown', e => {
+    function handleMousedown(e: MouseEvent) {
         const origin = getCanvasOrigin();
         const relative = {
             x: e.clientX - origin.x,
@@ -208,8 +219,7 @@ function init() {
             if (invalidMove) {
                 return;
             }
-        }
-        else {
+        } else {
             // Clicked already selected card
             const stepsFromLast = currentPath.length - indexInPath - 1;
             // If it's the last card deselect just that one. Otherwise, everything after it.
@@ -224,25 +234,15 @@ function init() {
         lastSwipedCell = cellIndex;
 
         invalidate();
-    });
+    }
+
+    canvas.addEventListener('mousedown', handleMousedown);
     document.addEventListener('mouseup', () => {
         canvas.removeEventListener('mousemove', handleMove);
     });
 
-    $<HTMLButtonElement>('#commit')!.addEventListener('click', () => {
-        if (!previewStack.length) {
-            return;
-        }
-        const previous = last(previewStack)!;
-        committedState = endTurn(previous);
-        previewStack.length = 0;
-        clearPreviewAnims();
-        // TODO: Entirely different animation logic needed here
-        updateScene(committedState);
-    });
-    $<HTMLButtonElement>('#undo')!.addEventListener('click', () => {
-        undo();
-    });
+    $<HTMLButtonElement>('#commit')!.addEventListener('click', commit);
+    $<HTMLButtonElement>('#undo')!.addEventListener('click', undo);
 
     // Support toggled and hold-to-enable turbo mode
     const turboButton = $<HTMLInputElement>('#turbo')!;
@@ -265,7 +265,16 @@ function init() {
     const gameState = initGame();
     committedState = gameState;
     initScene(initView(gameState));
-    initAnims();
+
+    // Start main loop
+    requestAnimationFrame(update);
+}
+
+/** Main game loop, runs every frame. Coordinates between the various subsystems, where needed. */
+function update(timestamp: DOMHighResTimeStamp) {
+    updateAnimations(timestamp);
+    render();
+    requestAnimationFrame(update);
 }
 
 document.addEventListener('DOMContentLoaded', init);
