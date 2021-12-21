@@ -1,5 +1,24 @@
-import { last, shuffle, times } from 'lodash';
+import { last, shuffle, times, difference } from 'lodash';
 import { v2, Vector2 } from './util';
+
+/** List of adjacent cells for each cell. The board layout is the following:
+ *
+ * 012
+ * 345
+ * 678
+ *
+ * */
+const pathAdjacentIndexes = {
+    0: [1, 3, 4],
+    1: [0, 2, 3, 4, 5],
+    2: [1, 4, 5],
+    3: [0, 1, 4, 6, 7],
+    4: [0, 1, 2, 3, 5, 6, 7, 8],
+    5: [1, 2, 4, 7, 8],
+    6: [3, 4, 7],
+    7: [3, 4, 5, 6, 8],
+    8: [4, 5, 7],
+};
 
 export interface Card {
     cost: number;
@@ -95,6 +114,19 @@ function isAdjacent(startIndex: number, endIndex: number) {
         && end.x <= start.x + 1
         && end.y >= start.y - 1
         && end.y <= start.y + 1;
+}
+
+type CellIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
+const ALL_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+export function validInputs(prev: GameState): number[] {
+    const path = prev.path;
+    if (path.length === 0) {
+        return ALL_INDEXES;
+    }
+    const lastStep = path[path.length - 1] as CellIndex; // TODO Use this type to begin with
+    const adjacents = pathAdjacentIndexes[lastStep];
+    return difference(adjacents, path);
 }
 
 /** Returns the new game state given the previous one and the current input. */
