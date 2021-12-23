@@ -15,48 +15,29 @@ export function setTurbo(newState: boolean) {
     animationSpeed = turboMode ? 4 : 1;
 }
 
-const animations: Animation[] = [];
-let currentAnimation: any;
-
-export const previewAnimations: Animation[] = []; // Animations for each step of the current turn
-let animatedUntil = 0; // Last step for which animations have finished
-let currentlyAnimating = -1; // Index of currently running animation
+let currentAnimation: Animation | undefined = undefined;
 
 /** Runs on each frame, updates animations if needed. */
-export function updateAnimations(timestamp: DOMHighResTimeStamp): void {
+export function updateAnimations(timestamp: DOMHighResTimeStamp): boolean {
+    // NOTE: Only handles one simultaneous animation, because that's all we need. Easy to extend to an array, though.
+    let done = true;
     if (currentAnimation) {
         // Process current anim
-        const done = currentAnimation(timestamp);
+        done = currentAnimation(timestamp);
         if (done) {
             currentAnimation = undefined;
-            animatedUntil += 1;
         }
         invalidate();
-    } else {
-        // TODO: Decouple animation and gaemplay-triggered anim tracking/scheduling
-        // We have a new anim to play
-        if (previewAnimations.length > animatedUntil) {
-            currentlyAnimating += 1;
-            currentAnimation = previewAnimations[currentlyAnimating];
-        }
-        // TODO This only handles the turn-synchronized animations now, not background ones
     }
+    return done;
 }
 
-export function scheduleAnims(...anims: Animation[]) {
-    previewAnimations.push(...anims);
-}
-
-export function undoLastAnim() {
-    if (previewAnimations.length > currentlyAnimating) {
-        previewAnimations.pop();
+export function scheduleAnimation(anim: Animation): void {
+    if (currentAnimation) {
+        // NOTE: Only an error due to the self-imposed single-anim limitation
+        throw Error('Already running an animation. This should never happen.');
     }
-}
-
-// TODO: Remove. This is a hack to keep existing functionality
-export function clearPreviewAnims() {
-    animatedUntil = 0;
-    currentlyAnimating = -1;
+    currentAnimation = anim;
 }
 
 /** Produces an animation callback from an updater function that works with elapsed time.

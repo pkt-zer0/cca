@@ -13,9 +13,10 @@ Run `yarn install` to install dependencies, then `yarn start` to start the devel
 - Fast mode support
 - Swipe selection
 - Cancellable animations
+- Revertible animations
 
 # Goals
-- Revertible animations
+- Hint for next move
 
 # Non-goals
 - Pretty graphics
