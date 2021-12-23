@@ -125,7 +125,8 @@ function drawEnergyChange(ctx: CanvasRenderingContext2D) {
     ctx.fillStyle = `rgba(255, 255, 255, ${scene.energyChangeOpacity})`;
     ctx.font = '32px sans-serif';
     ctx.textBaseline = 'top';
-    const text = `${scene.energyChange.toFixed(0)} E`;
+    const sign = scene.energyChange > 0 ? '+' : '';
+    const text = `${sign}${scene.energyChange.toFixed(0)} E`;
     ctx.fillText(text, 100, 300);
 
     ctx.restore();
