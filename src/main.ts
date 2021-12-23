@@ -4,7 +4,7 @@ import { initRenderer, initScene, invalidate, render, scene } from './render';
 import {
     animateEnergyChange,
     animateHighlight,
-    animateParallel,
+    animateParallel, animateSequence,
     Animation,
     scheduleAnimation,
     updateAnimations,
@@ -58,6 +58,20 @@ function getReverseAnimation(events: GameEvent[]): Animation | undefined {
     return newAnimations.length ? animateParallel(newAnimations) : undefined;
 }
 
+/** Collect undo animations for a step */
+function getCommitAnimation(state: GameState): Animation {
+    // Placeholder animation: makes the selected path blink then fade
+    return animateParallel(
+        state.path.map(index => {
+            return animateSequence([
+                animateHighlight(scene.cards[index], true),
+                animateHighlight(scene.cards[index], false),
+                animateHighlight(scene.cards[index], true),
+            ]);
+        })
+    );
+}
+
 function updateScene(nextStep: GameState) {
     scene.energy = nextStep.energy;
     scene.path = cloneDeep(nextStep.path);
@@ -80,9 +94,9 @@ export function commit() {
     }
     const previous = last(previewStack)!;
     committedState = endTurn(previous);
-    previewStack.length = 0;
-    // clearPreviewAnims(); // FIXME Set commit flag, only update after anims are done
-    // TODO: Entirely different animation logic needed here
+    // previewStack.length = 0; // FIXME
+    turnCommitted = true;
+    checkForAnimation = true;
     updateScene(committedState);
 }
 
@@ -145,6 +159,7 @@ interface AnimationStep {
 
 const animatedSteps: AnimationStep[] = [];
 const desiredSteps: AnimationStep[] = [];
+let turnCommitted = false;
 /** Indicates that we might have some new steps to animate. Cleared when animations have caught up with input. */
 let checkForAnimation = false;
 
@@ -207,9 +222,20 @@ function scheduleNextAnimation(): void {
         }
         return;
     }
-    // TODO: Handle commit anims
 
-    // The two paths have caught up, no need to calculate their changes until new input comes in
+    // The two paths have caught up, but we might still have to run end-of-turn animations
+    if (turnCommitted) {
+        turnCommitted = false;
+        //FIXME we only have events in the animSteps, this one uses the state directly.
+        const lastStep = previewStack[previewStack.length - 1];
+        const anim = getCommitAnimation(lastStep);
+        if (anim) {
+            scheduleAnimation(anim);
+        }
+        return;
+    }
+
+    // All caught up, no need to calculate step changes until new input comes in
     checkForAnimation = false;
 
 }

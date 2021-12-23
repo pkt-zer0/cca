@@ -94,6 +94,21 @@ export function animateParallel(anims: Animation[]): Animation {
     };
 }
 
+export function animateSequence(anims: Animation[]): Animation {
+    let current = 0;
+    return function update(timestamp: DOMHighResTimeStamp) {
+        if (current >= anims.length) {
+            return true;
+        }
+        const animation = anims[current];
+        const done = animation(timestamp);
+        if (done) {
+            current += 1;
+        }
+        return false;
+    };
+}
+
 /** Tweens a card's highlight value from 0 to 1 over 500ms. */
 export function animateHighlight(card: UICard, reverse: boolean) {
     const duration = 500;
