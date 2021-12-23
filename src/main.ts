@@ -44,7 +44,7 @@ const previewStack: GameState[] = [];
 
 // TODO Distinct solution for undo animations
 /** Collect animations for the current step */
-function getAnimations(events: GameEvent[]): Animation[] {
+function getAnimation(events: GameEvent[]): Animation | undefined {
     const newAnimations = [];
     // Trigger an animation for cards newly added to the path
     for (let event of events) {
@@ -58,7 +58,7 @@ function getAnimations(events: GameEvent[]): Animation[] {
         }
     }
 
-    return newAnimations.length ? [animateParallel(newAnimations)] : [];
+    return newAnimations.length ? animateParallel(newAnimations) : undefined;
 }
 
 function updateScene(nextStep: GameState) {
@@ -96,7 +96,8 @@ function advance(state: GameState, inputCellIndex: number): boolean {
     }
 
     previewStack.push(nextStep.state);
-    scheduleAnims(...getAnimations(nextStep.events));
+    const newAnim = getAnimation(nextStep.events);
+    if (newAnim) { scheduleAnims(newAnim); }
     updateScene(nextStep.state);
     return false;
 }
