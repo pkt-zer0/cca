@@ -1,4 +1,4 @@
-import { endTurn, EventType, GameEvent, GameState, initGame, next } from './game';
+import { CellIndex, endTurn, EventType, GameEvent, GameState, initGame, next } from './game';
 import { clamp, cloneDeep, flatMap, last, times } from 'lodash';
 import { addVec, Rectangle, scaleVec, subVec, v2, Vector2 } from './util';
 import { CELL_SIZE, init as initRenderer, initScene, invalidate, render, Scene, scene } from './render';
@@ -107,7 +107,7 @@ function commit() {
     updateScene(committedState);
 }
 
-function advance(state: GameState, inputCellIndex: number): boolean {
+function advance(state: GameState, inputCellIndex: CellIndex): boolean {
     const nextStep = next(state, inputCellIndex);
     if (nextStep instanceof Error) {
         console.log(nextStep.message);
@@ -139,14 +139,14 @@ function showHint() {
 }
 
 /** Returns the index of cell (full-size) at the given point, or -1 if there's no hit. */
-function hitTestCells(point: Vector2): number {
+function hitTestCells(point: Vector2): CellIndex | -1 {
     if (point.x > 300 || point.y > 300) {
         return -1; // Outside input region
     }
 
     const xIndex = clamp(Math.floor(point.x / CELL_SIZE), 0, 2);
     const yIndex = clamp(Math.floor(point.y / CELL_SIZE), 0, 2);
-    return yIndex * 3 + xIndex;
+    return yIndex * 3 + xIndex as CellIndex;
 }
 
 function insideRect(point: Vector2, topLeft: Vector2, bottomRight: Vector2) {
@@ -174,11 +174,11 @@ const swipeCellRects: Rectangle[] = times(9, cellIndex => {
  *
  *  Uses a smaller hitbox, for easier diagonal swiping.
  */
-function hitTestCellsSwipe(point: Vector2): number {
+function hitTestCellsSwipe(point: Vector2): CellIndex | -1 {
     for (let cellIndex = 0; cellIndex < 9; cellIndex += 1) {
         const { topLeft, bottomRight } = swipeCellRects[cellIndex];
         if (insideRect(point, topLeft, bottomRight)) {
-            return cellIndex;
+            return cellIndex as CellIndex;
         }
     }
     return -1;

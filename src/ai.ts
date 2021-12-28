@@ -1,6 +1,6 @@
-import { endTurn, GameState, next, validInputs } from './game';
+import { CellIndex, endTurn, GameState, next, validInputs } from './game';
 
-export function enumerateAll(initState: GameState): number[] | undefined {
+export function enumerateAll(initState: GameState): CellIndex[] | undefined {
     let bestScore: number = Number.NEGATIVE_INFINITY;
     let bestPath: number[] | undefined = undefined;
 
@@ -51,7 +51,7 @@ export function enumerateAll(initState: GameState): number[] | undefined {
 }
 
 /** Assign a numeric score to a state. The higher the number, the more desirable is this outcome. */
-function evaluate(state: GameState, path: number[]): number {
+function evaluate(state: GameState, path: CellIndex[]): number {
     // Normally, you'd consider various criteria (damage taken, damage given, gold gained), with various weights
     // allowing for different preferences (maximize damage, most cards removed, etc.) The weights can be determined
     // manually, or by a genetic algorithm to select the best weighting from a 1000 randomly generated games.

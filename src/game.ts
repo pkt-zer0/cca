@@ -1,6 +1,10 @@
 import { last, shuffle, times, difference } from 'lodash';
 import { v2, Vector2 } from './util';
 
+/** Constrain possible board indexes on the type level. We have 9 cells - no more, no less. */
+export type CellIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+const ALL_INDEXES: CellIndex[] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+
 /** List of adjacent cells for each cell. The board layout is the following:
  *
  * 012
@@ -8,7 +12,7 @@ import { v2, Vector2 } from './util';
  * 678
  *
  * */
-const pathAdjacentIndexes = {
+const pathAdjacentIndexes: Record<CellIndex, CellIndex[]> = {
     0: [1, 3, 4],
     1: [0, 2, 3, 4, 5],
     2: [1, 4, 5],
@@ -30,7 +34,7 @@ export interface GameState {
     /** Cards on the board, in a 3x3 grid. */
     board: Card[];
     /** Index of the cards in the currently selected path. */
-    path: number[];
+    path: CellIndex[];
     health: number;
     energy: number;
     gold: number;
@@ -116,21 +120,19 @@ function isAdjacent(startIndex: number, endIndex: number) {
         && end.y <= start.y + 1;
 }
 
-type CellIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
-const ALL_INDEXES = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-export function validInputs(prev: GameState): number[] {
+export function validInputs(prev: GameState): CellIndex[] {
     const path = prev.path;
     if (path.length === 0) {
         return ALL_INDEXES;
     }
-    const lastStep = path[path.length - 1] as CellIndex; // TODO Use this type to begin with
+    const lastStep = path[path.length - 1];
     const adjacents = pathAdjacentIndexes[lastStep];
     return difference(adjacents, path);
 }
 
 /** Returns the new game state given the previous one and the current input. */
-export function next(prev: GameState, input: number): StepResult | Error {
+export function next(prev: GameState, input: CellIndex): StepResult | Error {
     // Copy original state so we can mutate it and remain a pure function
     const state = cloneState(prev);
     const events: GameEvent[] = [];

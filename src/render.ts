@@ -1,15 +1,14 @@
-import { Card, indexToCoord } from './game';
+import { Card, CellIndex, indexToCoord } from './game';
 import { addVec, scaleVec, v2, Vector2 } from './util';
 
 export interface Scene {
     cards: UICard[];
-    // TODO: For simplicity, just copy the entire game state?
     energy: number;
     energyChange: number;
     energyChangeOpacity: number;
-    path: number[];
+    path: CellIndex[];
     /** Contains the path suggestion to display. Set to undefined if hidden. */
-    suggestedPath: number[] | undefined;
+    suggestedPath: CellIndex[] | undefined;
 }
 
 export interface UICard {
@@ -79,7 +78,7 @@ export function render() {
     needsRender = false;
 }
 
-function drawPath(ctx: CanvasRenderingContext2D, path: number[], color: string) {
+function drawPath(ctx: CanvasRenderingContext2D, path: CellIndex[], color: string) {
     if (!path.length) {
         return;
     }
