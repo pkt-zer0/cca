@@ -8,6 +8,8 @@ export interface Scene {
     energyChange: number;
     energyChangeOpacity: number;
     path: number[];
+    /** Contains the path suggestion to display. Set to undefined if hidden. */
+    suggestedPath: number[] | undefined;
 }
 
 export interface UICard {
@@ -19,6 +21,8 @@ export interface UICard {
 
 const CANVAS_SIZE = v2(300, 400);
 export const CELL_SIZE = 100;
+const SELECTED_PATH_COLOR = 'rgba(255, 0, 0, 0.5)';
+const SUGGESTED_PATH_COLOR = 'rgba(0,128,255,0.5)';
 
 let ctx: CanvasRenderingContext2D;
 export function init(context: CanvasRenderingContext2D) {
@@ -66,13 +70,16 @@ export function render() {
     for (const card of scene.cards) {
         drawCard(ctx, card);
     }
-    drawPath(ctx, scene.path);
+    drawPath(ctx, scene.path, SELECTED_PATH_COLOR);
+    if (scene.suggestedPath) {
+        drawPath(ctx, scene.suggestedPath, SUGGESTED_PATH_COLOR);
+    }
 
     ctx.restore();
     needsRender = false;
 }
 
-function drawPath(ctx: CanvasRenderingContext2D, path: number[]) {
+function drawPath(ctx: CanvasRenderingContext2D, path: number[], color: string) {
     if (!path.length) {
         return;
     }
@@ -85,8 +92,8 @@ function drawPath(ctx: CanvasRenderingContext2D, path: number[]) {
 
     ctx.save();
 
-    ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
-    ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
     ctx.lineWidth = 8;
 
     const firstPos = positions[0];

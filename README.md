@@ -14,9 +14,10 @@ Run `yarn install` to install dependencies, then `yarn start` to start the devel
 - Swipe selection
 - Cancellable animations
 - Revertible animations
+- Hint for next move
 
 # Goals
-- Hint for next move
+- ...
 
 # Non-goals
 - Pretty graphics

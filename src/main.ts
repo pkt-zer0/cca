@@ -11,6 +11,7 @@ import {
     setTurbo,
     updateAnimations,
 } from './anim';
+import { enumerateAll } from './ai';
 
 const $ = document.querySelector.bind(document);
 
@@ -34,6 +35,7 @@ function initView(gameState: GameState): Scene {
         energyChange: 0,
         energyChangeOpacity: 0,
         path: cloneDeep(gameState.path),
+        suggestedPath: undefined,
     };
 }
 
@@ -121,6 +123,19 @@ function advance(state: GameState, inputCellIndex: number): boolean {
     checkForAnimation = true;
     updateScene(nextStep.state);
     return false;
+}
+
+function showHint() {
+    const suggestedPath = enumerateAll(committedState);
+    if (suggestedPath) {
+        scene.suggestedPath = suggestedPath;
+        invalidate();
+        // TODO: This is a hack to bypass the anim system, since it would need multi-anim support to work properly.
+        setTimeout(() => {
+            scene.suggestedPath = undefined;
+            invalidate();
+        }, 1500);
+    }
 }
 
 /** Returns the index of cell (full-size) at the given point, or -1 if there's no hit. */
@@ -265,6 +280,7 @@ function init() {
 
     $<HTMLButtonElement>('#commit')!.addEventListener('click', commit);
     $<HTMLButtonElement>('#undo')!.addEventListener('click', undo);
+    $<HTMLButtonElement>('#hint')!.addEventListener('click', showHint);
 
     // Support toggled and hold-to-enable turbo mode
     const turboButton = $<HTMLInputElement>('#turbo')!;
