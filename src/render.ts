@@ -1,5 +1,6 @@
-import { Card, CellIndex, indexToCoord } from './game';
+import { Card, CellIndex, GameState, indexToCoord } from './game';
 import { addVec, scaleVec, v2, Vector2 } from './util';
+import { cloneDeep } from 'lodash';
 
 export interface Scene {
     cards: UICard[];
@@ -24,11 +25,29 @@ const SELECTED_PATH_COLOR = 'rgba(255, 0, 0, 0.5)';
 const SUGGESTED_PATH_COLOR = 'rgba(0,128,255,0.5)';
 
 let ctx: CanvasRenderingContext2D;
-export function init(context: CanvasRenderingContext2D) {
+export function initRenderer(context: CanvasRenderingContext2D) {
     ctx = context;
 }
-export function initScene(initialScene: Scene) {
-    scene = initialScene;
+export function initScene(gameState: GameState): void {
+    let cards = gameState.board.map((c, index) => {
+        const xPos = index % 3;
+        const yPos = Math.floor(index / 3);
+        const cellPos = scaleVec({ x: xPos, y: yPos }, CELL_SIZE);
+        const position = addVec(cellPos, v2(10, 10));
+        return {
+            card: c,
+            position,
+            highlight: 0,
+        };
+    });
+    scene = {
+        cards,
+        energy: gameState.energy,
+        energyChange: 0,
+        energyChangeOpacity: 0,
+        path: cloneDeep(gameState.path),
+        suggestedPath: undefined,
+    };
 }
 
 export let scene: Scene;

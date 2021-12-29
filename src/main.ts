@@ -1,7 +1,6 @@
 import { CellIndex, endTurn, EventType, GameEvent, GameState, initGame, next } from './game';
 import { cloneDeep, flatMap, last, } from 'lodash';
-import { addVec, scaleVec, v2 } from './util';
-import { CELL_SIZE, init as initRenderer, initScene, invalidate, render, Scene, scene } from './render';
+import { initRenderer, initScene, invalidate, render, scene } from './render';
 import {
     animateEnergyChange,
     animateHighlight,
@@ -16,28 +15,6 @@ import { initInputs } from './input';
 const $ = document.querySelector.bind(document);
 
 let canvas: HTMLCanvasElement;
-
-function initView(gameState: GameState): Scene {
-    let cards = gameState.board.map((c, index) => {
-        const xPos = index % 3;
-        const yPos = Math.floor(index / 3);
-        const cellPos = scaleVec({ x: xPos, y: yPos }, CELL_SIZE);
-        const position = addVec(cellPos, v2(10, 10));
-        return {
-            card: c,
-            position,
-            highlight: 0,
-        };
-    });
-    return {
-        cards,
-        energy: gameState.energy,
-        energyChange: 0,
-        energyChangeOpacity: 0,
-        path: cloneDeep(gameState.path),
-        suggestedPath: undefined,
-    };
-}
 
 let committedState: GameState;
 const previewStack: GameState[] = [];
@@ -150,7 +127,7 @@ function init() {
 
     const gameState = initGame();
     committedState = gameState;
-    initScene(initView(gameState));
+    initScene(gameState);
     initInputs();
 
     // Start main loop
