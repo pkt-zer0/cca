@@ -1,5 +1,6 @@
 import { CellIndex, endTurn, GameState, next, validInputs } from './game';
 
+/** Find the optimal path for the given turn, according to a built-in scoring function ({@link evaluate}) */
 export function enumerateAll(initState: GameState): CellIndex[] | undefined {
     let bestScore: number = Number.NEGATIVE_INFINITY;
     let bestPath: number[] | undefined = undefined;

@@ -1,7 +1,10 @@
+/* Renders scene data onto a canvas. */
+
 import { Card, CellIndex, GameState, indexToCoord } from './game';
 import { addVec, scaleVec, v2, Vector2 } from './util';
 import { cloneDeep } from 'lodash';
 
+/** Contains all data needed to figure out what should be shown on-screen. */
 export interface Scene {
     cards: UICard[];
     energy: number;
@@ -53,10 +56,12 @@ export function initScene(gameState: GameState): void {
 export let scene: Scene;
 
 let needsRender = true;
+/** Indicate that the scene needs to be redrawn on the next frame. */
 export function invalidate() {
     needsRender = true;
 }
 
+/** Redraws the entire scene (if needed). */
 export function render() {
     if (!needsRender) {
         return;

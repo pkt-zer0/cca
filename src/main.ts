@@ -64,6 +64,7 @@ function updateScene(nextStep: GameState) {
     invalidate();
 }
 
+/** Undo the last chosen step. */
 export function undo() {
     previewStack.pop();
     desiredSteps.pop();
@@ -72,6 +73,7 @@ export function undo() {
     updateScene(latestState);
 }
 
+/** Confirm the currently selected steps as final for the current turn. */
 export function commit() {
     if (!previewStack.length) {
         return;
@@ -84,6 +86,7 @@ export function commit() {
     updateScene(committedState);
 }
 
+/** Pick the given cell as the next step. Returns true in case it's an invalid move. */
 export function advance(inputCellIndex: CellIndex): boolean {
     const latestState = previewStack.length ? last(previewStack)! : committedState;
     const nextStep = next(latestState, inputCellIndex);
@@ -103,6 +106,7 @@ export function advance(inputCellIndex: CellIndex): boolean {
     return false;
 }
 
+/** Shows the suggested move for the current turn. */
 export function showHint() {
     const suggestedPath = enumerateAll(committedState);
     if (suggestedPath) {

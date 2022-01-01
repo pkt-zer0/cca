@@ -1,3 +1,5 @@
+/* Utilities for 2D vector math. */
+
 export interface Vector2 {
     x: number;
     y: number;

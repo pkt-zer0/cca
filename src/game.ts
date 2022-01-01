@@ -1,3 +1,5 @@
+/* Contains core game logic, independent of rendering, animations, etc. */
+
 import { last, shuffle, times, difference } from 'lodash';
 import { v2, Vector2 } from './util';
 
@@ -74,6 +76,7 @@ function cloneCards(cards: Card[]): Card[] {
     return result;
 }
 
+/** Creates a deep copy of the given state. */
 function cloneState(original: GameState): GameState {
     return {
         energy: original.energy,
@@ -86,6 +89,7 @@ function cloneState(original: GameState): GameState {
     };
 }
 
+/** Creates a randomly generated starting state. */
 export function initGame(): GameState {
     const startingDeck: Card[] = times(15, i => {
         return {
@@ -111,7 +115,7 @@ export function initGame(): GameState {
     };
 }
 
-function isAdjacent(startIndex: number, endIndex: number) {
+function isAdjacent(startIndex: CellIndex, endIndex: CellIndex) {
     const start = indexToCoord(startIndex);
     const end = indexToCoord(endIndex);
     return end.x >= start.x - 1
@@ -120,7 +124,7 @@ function isAdjacent(startIndex: number, endIndex: number) {
         && end.y <= start.y + 1;
 }
 
-
+/** Returns all inputs that are valid choices in the given state. */
 export function validInputs(prev: GameState): CellIndex[] {
     const path = prev.path;
     if (path.length === 0) {
@@ -133,7 +137,7 @@ export function validInputs(prev: GameState): CellIndex[] {
 
 /** Returns the new game state given the previous one and the current input. */
 export function next(prev: GameState, input: CellIndex): StepResult | Error {
-    // Copy original state so we can mutate it and remain a pure function
+    // Copy original state, so we can mutate it and remain a pure function
     const state = cloneState(prev);
     const events: GameEvent[] = [];
     const selectedIndex = input;
@@ -166,6 +170,7 @@ export function next(prev: GameState, input: CellIndex): StepResult | Error {
     return { state, events };
 }
 
+/** Commit the path selected for the turn, trigger any resulting effects. */
 export function endTurn(prev: GameState): GameState {
     const state = cloneState(prev);
     state.path = [];
@@ -174,7 +179,8 @@ export function endTurn(prev: GameState): GameState {
     return state;
 }
 
-export function indexToCoord(index: number): Vector2 {
+/** Returns the 2D coordinate pair for a 1D cell index. */
+export function indexToCoord(index: CellIndex): Vector2 {
     const x = index % 3;
     const y = Math.floor(index / 3);
     return v2(x,y);

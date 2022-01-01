@@ -1,8 +1,10 @@
+/* Animations are updates to the scene that happen over time. Defining and running animations are both handled here. */
+
 import { invalidate, scene, UICard } from './render';
 import { clamp, noop } from 'lodash';
 
 export interface Animation {
-    /** Called on each frame of an animation. Return true to indicate the animation has finished. */
+    /** Called on each frame to update the scene accordingly. Return true to indicate the animation has finished. */
     (timestamp: DOMHighResTimeStamp): boolean;
 }
 
@@ -10,6 +12,7 @@ export interface Animation {
 let animationSpeed = 1;
 let turboMode = false;
 
+/** Toggles turbo mode, where animations are sped up, and certain ones skipped entirely. */
 export function setTurbo(newState: boolean) {
     turboMode = newState;
     animationSpeed = turboMode ? 4 : 1;
@@ -17,7 +20,7 @@ export function setTurbo(newState: boolean) {
 
 let currentAnimation: Animation | undefined = undefined;
 
-/** Runs on each frame, updates animations if needed. */
+/** Runs on each frame, updates animations if needed. Returns true if no animation is running, false otherwise. */
 export function updateAnimations(timestamp: DOMHighResTimeStamp): boolean {
     // NOTE: Only handles one simultaneous animation, because that's all we need. Easy to extend to an array, though.
     let done = true;
@@ -32,6 +35,7 @@ export function updateAnimations(timestamp: DOMHighResTimeStamp): boolean {
     return done;
 }
 
+/** Immediately start an animation. */
 export function scheduleAnimation(anim: Animation): void {
     if (currentAnimation) {
         // NOTE: Only an error due to the self-imposed single-anim limitation
@@ -51,7 +55,7 @@ interface AnimationCallbacks {
  *
  * The returned animation starts running when first invoked, and tracks elapsed time since then.
  */
-function animationUpdater(callbacks: AnimationCallbacks) {
+function animationUpdater(callbacks: AnimationCallbacks): Animation {
     let prevTimestamp: number | undefined = undefined;
     let elapsed = 0;
 
@@ -59,10 +63,11 @@ function animationUpdater(callbacks: AnimationCallbacks) {
     const updater = callbacks.update;
     const cleanup = callbacks.cleanup ?? noop;
 
-    function update(timestamp: DOMHighResTimeStamp) {
+    return function update(timestamp: DOMHighResTimeStamp) {
         if (!prevTimestamp) {
             prevTimestamp = timestamp;
         }
+        // Time since previous frame
         const delta = timestamp - prevTimestamp;
         prevTimestamp = timestamp;
         elapsed += delta * animationSpeed;
@@ -75,11 +80,10 @@ function animationUpdater(callbacks: AnimationCallbacks) {
             cleanup();
         }
         return done;
-    }
-
-    return update;
+    };
 }
 
+/** Animation combinator: runs the given animations in parallel, until all are finished. */
 export function animateParallel(anims: Animation[]): Animation {
     return function update(timestamp: DOMHighResTimeStamp) {
         let done = true;
@@ -109,6 +113,7 @@ export function animateHighlight(card: UICard, reverse: boolean) {
     });
 }
 
+/** Show a text popup for energy changes that fades in and out. */
 export function animateEnergyChange(amount: number) {
     const rampUp = 200;
     const stable = 800;

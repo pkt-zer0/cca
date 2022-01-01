@@ -15,6 +15,7 @@ function insideRect(point: Vector2, topLeft: Vector2, bottomRight: Vector2) {
 
 const centerOffset = v2(CELL_SIZE / 2, CELL_SIZE / 2);
 const hitOffset = v2(40, 40);
+// Precalculate the rectangles used for hit testing when swiping
 const swipeCellRects: Rectangle[] = times(9, cellIndex => {
     const xOrigin = (cellIndex % 3) * CELL_SIZE;
     const yOrigin = Math.floor(cellIndex / 3) * CELL_SIZE;
@@ -23,8 +24,8 @@ const swipeCellRects: Rectangle[] = times(9, cellIndex => {
     const topLeft = subVec(center, hitOffset);
     const bottomRight = addVec(center, hitOffset);
     return {
-        topLeft: topLeft,
-        bottomRight: bottomRight,
+        topLeft,
+        bottomRight,
     };
 });
 

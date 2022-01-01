@@ -1,3 +1,5 @@
+/* Convert UI interactions into inputs for the game engine. */
+
 import { advance, commit, getCurrentPath, showHint, undo } from './main';
 import { setTurbo } from './anim';
 import { hitTestCells, hitTestCellsSwipe } from './hittest';
@@ -63,7 +65,6 @@ export function toggleInput(enabled: boolean): void {
 
     const { canvas, commitButton, undoButton, hintButton } = elements;
     if (enabled) {
-
         canvas.addEventListener('mousedown', handleMousedown);
         commitButton.addEventListener('click', commit);
         undoButton.addEventListener('click', undo);
