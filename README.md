@@ -1,4 +1,5 @@
-A coding exercise for implementing [Card Crawl Adventure](http://adventure.cardcrawl.com)'s UI.
+A coding exercise for implementing [Card Crawl Adventure](http://adventure.cardcrawl.com)'s UI. For in-depth design
+notes, check [this file](DESIGN.md).
 
 _Disclaimer: This project is not affiliated with Tinytouchtales in any way. However, they're cool folks who make great games, so you should probably check them out!_
 
